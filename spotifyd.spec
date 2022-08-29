@@ -5,20 +5,32 @@ Summary:        An open source Spotify client running as a UNIX daemon.
 
 License:        GPL3
 URL:            https://github.com/Spotifyd/spotifyd
-Source0:        https://github.com/Spotifyd/spotifyd/archive/v%( echo %{version} | tr '_' '-' ).zip
+Source0:        https://github.com/Spotifyd/spotifyd/archive/v%{version}.zip
+
+# Contains spotifyd-$VERSION/vendor/*.
+#     $ cargo vendor
+#     $ mkdir spotifyd-X.Y.Z
+#     $ mv vendor spotifyd-X.Y.Z/
+#     $ tar vcJf spotifyd-X.Y.Z.cargo-vendor.tar.xz spotifyd-X.Y.Z
+Source1:        spotifyd-%{version}.cargo-vendor.tar.xz
+Source2:        config.toml
 
 BuildRequires:  cargo openssl-devel alsa-lib-devel pulseaudio-libs-devel systemd-rpm-macros dbus-devel
-Requires:       openssl pulseaudio-libs alsa-lib dbus
+BuildRequires:  rust-packaging
 
 %description
 
 
 %prep
-%autosetup
+%autosetup -N -b1 -n spotifyd-%{version}
+
+mkdir .cargo
+cp %{SOURCE2} .cargo/
 
 %build
 export RUSTFLAGS=-g
-cargo build --release --features "pulseaudio_backend,dbus_keyring,dbus_mpris"
+%{__cargo} build %{?_smp_mflags} -Z avoid-dev-deps --frozen --release \
+        --features "pulseaudio_backend,dbus_keyring,dbus_mpris"
 
 %install
 mkdir -p %{buildroot}/%{_bindir} %{buildroot}/%{_userunitdir}
